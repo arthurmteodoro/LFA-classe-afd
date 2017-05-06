@@ -1,6 +1,9 @@
-from __future__ import print_function
-from State import *
-from Transition import *
+from __future__ import print_function #utilizar o print como python 3
+from State import * #usar o objeto estado
+from Transition import * #usar o objeto transasao
+import copy #usada para copiar o objeto
+import xml.etree.ElementTree as ET #XML
+from Element_prettify import prettify #formatar xml para salvar
 
 class AFD(object):
 
@@ -132,78 +135,114 @@ class AFD(object):
 
         return newAutomata
 
+    def union(self, automata):
+        newAutomata = self.__createMultiplication__(automata)
+        stateA = self.getInitialState()
+        stateB = automata.getInitialState()
 
-if __name__ == "__main__":
+        initialState = newAutomata.getStateById(stateA.getId()+"."+stateB.getId())
+        initialState.setInitial(True)
+        newAutomata.__initalState = initialState
 
-#    aPar = AFD()
-#    aPar.addState(1, True, True)
-#    aPar.addState(2)
-#    aPar.addTransition(1, 2, "a")
-#    aPar.addTransition(2, 1, "a")
-#    aPar.addTransition(1, 1, "b")
-#    aPar.addTransition(2, 2, "b")
+        for stateA in self.__listState:
+            for stateB in automata.__listState:
+                if(stateA.getFinal() or stateB.getFinal()):
+                    finalState = newAutomata.getStateById(stateA.getId()+"."+stateB.getId())
+                    finalState.setFinal(True)
+                    newAutomata.__finalStates.append(finalState)
 
-#    bPar = AFD()
-#    bPar.addState(1, True, True)
-#    bPar.addState(2)
-#    bPar.addTransition(1, 1, "a")
-#    bPar.addTransition(1, 2, "b")
-#    bPar.addTransition(2, 2, "a")
-#    bPar.addTransition(2, 1, "b")
-#
-#    m = aPar.intersection(bPar)
+        return newAutomata
 
-#    notAba = AFD()
-#    notAba.addState(1, True, True)
-#    notAba.addState(2, False, True)
-#    notAba.addState(3, False, True)
-#    notAba.addState(4)
-#    notAba.addTransition(1, 2, "a")
-#    notAba.addTransition(1, 1, "b")
-#    notAba.addTransition(2, 2, "a")
-#    notAba.addTransition(2, 3, "b")
-#    notAba.addTransition(3, 4, "a")
-#    notAba.addTransition(3, 1, "b")
-#    notAba.addTransition(4, 4, "a")
-#    notAba.addTransition(4, 4, "b")
+    def complement(self):
+        #faz a copia do objeto, nao referencia
+        newAutomata = copy.deepcopy(self)
+        newAutomata.__finalStates = []
 
-#    notAbaAndAPar = aPar.intersection(notAba)
-#    if(notAbaAndAPar.accept("aaaabaa")):
-#        print("aceitou")
-#    else:
-#        print("nao aceitou")
+        for state in newAutomata.__listState:
+            state.setFinal(not state.getFinal())
+            if state.getFinal() == True:
+                newAutomata.__finalStates.append(state)
+        return newAutomata
 
-    segBImpar = AFD()
-    segBImpar.addState(1, True)
-    segBImpar.addState(2, final=True)
-    segBImpar.addState(3, final=True)
-    segBImpar.addState(4)
-    segBImpar.addState(5)
-    segBImpar.addTransition(1, 1, "a")
-    segBImpar.addTransition(1, 2, "b")
-    segBImpar.addTransition(2, 3, "a")
-    segBImpar.addTransition(2, 4, "b")
-    segBImpar.addTransition(3, 3, "a")
-    segBImpar.addTransition(3, 2, "b")
-    segBImpar.addTransition(4, 5, "a")
-    segBImpar.addTransition(4, 2, "b")
-    segBImpar.addTransition(5, 5, "a")
-    segBImpar.addTransition(5, 5, "b")
+    def difference(self, automata):
+        automataB = automata.complement();
+        return self.union(automataB)
 
-    segAPar = AFD()
-    segAPar.addState(1, True, True)
-    segAPar.addState(2)
-    segAPar.addState(3)
-    segAPar.addTransition(1, 2, "a")
-    segAPar.addTransition(1, 1, "b")
-    segAPar.addTransition(2, 1, "a")
-    segAPar.addTransition(2, 3, "b")
-    segAPar.addTransition(3, 3, "a")
-    segAPar.addTransition(3, 3, "b")
+    def load(self, name):
+        try:
+            # limpa o automato
+            self.__listState = []
+            self.__alphabet = []
+            self.__transistions = []
+            self.__initalState = None
+            self.__finalStates = []
 
-    m = segBImpar.intersection(segAPar)
+            tree = ET.parse(name)
+            root = tree.getroot()
 
-    if m.accept("aaaabbbaabaaaabbb"):
-        print("aceitou")
-    else:
-        print("nao aceitou")
+            #insere os estado
+            for state in root.iter('state'):
+                dataState = state.attrib
+
+                #o estado e inicial e final
+                if state.find('initial') != None and state.find('final') != None:
+                    self.addState(int(dataState['id']), True, True)
+                elif state.find('initial') != None:
+                    self.addState(int(dataState['id']), True)
+                elif state.find('final') != None:
+                    self.addState(int(dataState['id']), final=True)
+                else:
+                    self.addState(int(dataState['id']))
+
+            #insere as transicoes
+            for transition in root.iter('transition'):
+
+                #gera um dicionario com os dados de cada transacao
+                dataTransition = {}
+                for data in transition:
+                    dataTransition[data.tag] = data.text
+
+                self.addTransition(int(dataTransition['from']), int(dataTransition['to']), dataTransition['read'])
+
+        except:
+            return
+
+    def salve(self, name):
+        structure = ET.Element('structure')
+        type = ET.SubElement(structure, 'type')
+        type.text = 'fa'
+        automaton = ET.SubElement(structure, 'automaton')
+
+        comment = ET.Comment("The list of states.")
+        automaton.append(comment)
+
+        listStates = []
+        for states in self.__listState:
+            state = ET.Element('state', id=states.getId(), name=states.getId())
+            if states.getInitial() == True:
+                initial = ET.SubElement(state, 'initial')
+            if states.getFinal() == True:
+                final = ET.SubElement(state, 'final')
+            listStates.append(state)
+
+        automaton.extend(listStates)
+
+        comment = ET.Comment("The list of transitions.")
+        automaton.append(comment)
+
+        for transitions in self.__transistions:
+            transition = ET.SubElement(automaton, 'transition')
+
+            from1 = ET.SubElement(transition, 'from')
+            from1.text = str(transitions.getSource())
+
+            to = ET.SubElement(transition, 'to')
+            to.text = str(transitions.getDestination())
+
+            read = ET.SubElement(transition, 'read')
+            read.text = transitions.getConsume()
+
+        print(prettify(structure))
+
+        arq = open(name, 'w')
+        arq.write(prettify(structure))
