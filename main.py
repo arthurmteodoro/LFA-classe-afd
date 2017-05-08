@@ -15,5 +15,3 @@ if automata2.accept("baba"):
     print "Automato 2 aceitou baba"
 else:
     print "Automato 2 rejeitou baba"
-
-automata3 = automata1.intersection(automata2)

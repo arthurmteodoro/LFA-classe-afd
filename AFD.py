@@ -1,11 +1,14 @@
-from __future__ import print_function #utilizar o print como python 3
-from State import * #usar o objeto estado
-from Transition import * #usar o objeto transasao
-import copy #usada para copiar o objeto
+from __future__ import print_function #use python3 print function
+from State import * #use state object
+from Transition import * #use transition
+import copy #use to copy a object
 import xml.etree.ElementTree as ET #XML
-from Element_prettify import prettify #formatar xml para salvar
+from Element_prettify import prettify #formate xml to print
 
 class AFD(object):
+    """
+    Class that implements an automaton.
+    """
 
     def __init__(self):
         self.__listState = []
@@ -14,10 +17,21 @@ class AFD(object):
         self.__initalState = None
         self.__finalStates = []
 
-    def getInitialState(self):
+    def __getInitialState(self):
+        """
+        get a initial state
+        :return: initial state
+        """
         return self.__initalState
 
     def addState(self, id, initial=False, final=False):
+        """
+        Function to add a new state in automaton
+        :param id: state id (int)
+        :param initial: if a state is initial (bool)
+        :param final: if a state is final (bool)
+        :return: if a state is create or not (bool)
+        """
         if initial and self.__initalState != None:
             return False
 
@@ -32,7 +46,15 @@ class AFD(object):
         if(initial and self.__initalState == None):
             self.__initalState = state
 
+        return True
+
     def addTransition(self, idSource, idDestination, consume):
+        """
+        Add a transition in automaton
+        :param idSource: state id for source (int)
+        :param idDestination: state id for destination (int)
+        :param consume: caracter to consume in transition (char)
+        """
         idSource = str(idSource)
         idDestination = str(idDestination)
 
@@ -52,7 +74,7 @@ class AFD(object):
 
         self.__transistions.append(transition)
 
-    def __outputList__(self, state):
+    def __outputList(self, state):
         listTransistion = []
         for transition in self.__transistions:
             if transition.getSource() == state:
@@ -64,42 +86,42 @@ class AFD(object):
 
         for char in input:
 
-            listTransition = self.__outputList__(state)
+            listTransition = self.__outputList(state)
 
             if char not in self.__alphabet:
                 return False
 
-            encontrouTransicao = False
+            findTransition = False
             for transistion in listTransition:
                 if transistion.getConsume() == char:
-                    encontrouTransicao = True
+                    findTransition = True
                     state = transistion.getDestination()
                     break
 
-            if encontrouTransicao == False:
+            if findTransition == False:
                 return False
 
         return True if state.getFinal() else False
 
-    def getStateById(self, stateId):
+    def __getStateById(self, stateId):
         for state in self.__listState:
             if state.getId() == stateId:
                 return state
 
-    def __createMultiplication__(self, automata):
-        newAutomata = AFD()
+    def __createMultiplication(self, automata):
+        newAutomaton = AFD()
         for stateA in self.__listState:
             for stateB in automata.__listState:
-                newAutomata.addState(stateA.getId()+"."+stateB.getId())
+                newAutomaton.addState(stateA.getId()+"."+stateB.getId())
 
-        for state in newAutomata.__listState:
+        for state in newAutomaton.__listState:
             statesSplit = state.getId().split(".")
 
-            stateA = self.getStateById(statesSplit[0])
-            stateB = automata.getStateById(statesSplit[1])
+            stateA = self.__getStateById(statesSplit[0])
+            stateB = automata.__getStateById(statesSplit[1])
 
-            listA = self.__outputList__(stateA)
-            listB = automata.__outputList__(stateB)
+            listA = self.__outputList(stateA)
+            listB = automata.__outputList(stateB)
 
             for char in self.__alphabet:
                 stateDestination = ""
@@ -113,56 +135,65 @@ class AFD(object):
                     if transitionB.getConsume() == char:
                         stateDestination += transitionB.getDestination().getId()
 
-                newAutomata.addTransition(state.getId(), stateDestination, char)
+                if newAutomaton.__getStateById(stateDestination) == None:
+                    return None
 
-        return newAutomata
+                newAutomaton.addTransition(state.getId(), stateDestination, char)
+
+        return newAutomaton
 
     def intersection(self, automata):
-        newAutomata = self.__createMultiplication__(automata)
-        stateA = self.getInitialState()
-        stateB = automata.getInitialState()
+        newAutomaton = self.__createMultiplication(automata)
+        if newAutomaton == None:
+            return None
 
-        initialState = newAutomata.getStateById(stateA.getId()+"."+stateB.getId())
+        stateA = self.__getInitialState()
+        stateB = automata.__getInitialState()
+
+        initialState = newAutomaton.__getStateById(stateA.getId()+"."+stateB.getId())
         initialState.setInitial(True)
-        newAutomata.__initalState = initialState
+        newAutomaton.__initalState = initialState
 
         for stateA in self.__listState:
             for stateB in automata.__listState:
                 if(stateA.getFinal() and stateB.getFinal()):
-                    finalState = newAutomata.getStateById(stateA.getId()+"."+stateB.getId())
+                    finalState = newAutomaton.__getStateById(stateA.getId()+"."+stateB.getId())
                     finalState.setFinal(True)
-                    newAutomata.__finalStates.append(finalState)
+                    newAutomaton.__finalStates.append(finalState)
 
-        return newAutomata
+        return newAutomaton
 
     def union(self, automata):
-        newAutomata = self.__createMultiplication__(automata)
-        stateA = self.getInitialState()
-        stateB = automata.getInitialState()
+        newAutomaton = self.__createMultiplication(automata)
+        if newAutomaton == None:
+            return None
 
-        initialState = newAutomata.getStateById(stateA.getId()+"."+stateB.getId())
+        stateA = self.__getInitialState()
+        stateB = automata.__getInitialState()
+
+        initialState = newAutomaton.__getStateById(stateA.getId()+"."+stateB.getId())
         initialState.setInitial(True)
-        newAutomata.__initalState = initialState
+        newAutomaton.__initalState = initialState
 
         for stateA in self.__listState:
             for stateB in automata.__listState:
                 if(stateA.getFinal() or stateB.getFinal()):
-                    finalState = newAutomata.getStateById(stateA.getId()+"."+stateB.getId())
+                    finalState = newAutomaton.__getStateById(stateA.getId()+"."+stateB.getId())
                     finalState.setFinal(True)
-                    newAutomata.__finalStates.append(finalState)
+                    newAutomaton.__finalStates.append(finalState)
 
-        return newAutomata
+        return newAutomaton
 
     def complement(self):
         #faz a copia do objeto, nao referencia
-        newAutomata = copy.deepcopy(self)
-        newAutomata.__finalStates = []
+        newAutomaton = copy.deepcopy(self)
+        newAutomaton.__finalStates = []
 
-        for state in newAutomata.__listState:
+        for state in newAutomaton.__listState:
             state.setFinal(not state.getFinal())
             if state.getFinal() == True:
-                newAutomata.__finalStates.append(state)
-        return newAutomata
+                newAutomaton.__finalStates.append(state)
+        return newAutomaton
 
     def difference(self, automata):
         automataB = automata.complement();
@@ -241,8 +272,6 @@ class AFD(object):
 
             read = ET.SubElement(transition, 'read')
             read.text = transitions.getConsume()
-
-        print(prettify(structure))
 
         arq = open(name, 'w')
         arq.write(prettify(structure))
