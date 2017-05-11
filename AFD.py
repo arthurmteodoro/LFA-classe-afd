@@ -92,10 +92,10 @@ class AFD(object):
                 return False
 
             findTransition = False
-            for transistion in listTransition:
-                if transistion.getConsume() == char:
+            for transition in listTransition:
+                if transition.getConsume() == char:
                     findTransition = True
-                    state = transistion.getDestination()
+                    state = transition.getDestination()
                     break
 
             if findTransition == False:
@@ -275,3 +275,24 @@ class AFD(object):
 
         arq = open(name, 'w')
         arq.write(prettify(structure))
+
+    def initial(self):
+        return self.__getInitialState()
+
+    def move(self, stateP, wordP):
+        state = stateP
+        word = wordP
+
+        for char in word:
+
+            listTransition = self.__outputList(state)
+
+            if char not in self.__alphabet:
+                return False
+
+            for transition in listTransition:
+                if transition.getConsume() == char:
+                    state = transition.getDestination()
+                    break
+
+        return state
