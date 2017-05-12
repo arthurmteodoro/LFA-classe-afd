@@ -296,3 +296,10 @@ class AFD(object):
                     break
 
         return state
+
+    def finals(self):
+        finalsList = []
+        for state in self.__listState:
+            if state.getFinal():
+                finalsList.append(state)
+        return finalsList
