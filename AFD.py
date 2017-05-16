@@ -107,6 +107,7 @@ class AFD(object):
         for state in self.__listState:
             if state.getId() == stateId:
                 return state
+        return None
 
     def __createMultiplication(self, automata):
         newAutomaton = AFD()
@@ -142,6 +143,11 @@ class AFD(object):
 
         return newAutomaton
 
+    def __deletePoint(self):
+        for state in self.__listState:
+            listId = state.getId().split('.')
+            state.setId(listId[0]+listId[1])
+
     def intersection(self, automata):
         newAutomaton = self.__createMultiplication(automata)
         if newAutomaton == None:
@@ -161,6 +167,7 @@ class AFD(object):
                     finalState.setFinal(True)
                     newAutomaton.__finalStates.append(finalState)
 
+        newAutomaton.__deletePoint()
         return newAutomaton
 
     def union(self, automata):
@@ -182,6 +189,7 @@ class AFD(object):
                     finalState.setFinal(True)
                     newAutomaton.__finalStates.append(finalState)
 
+        newAutomaton.__deletePoint()
         return newAutomaton
 
     def complement(self):
@@ -277,10 +285,10 @@ class AFD(object):
         arq.write(prettify(structure))
 
     def initial(self):
-        return self.__getInitialState()
+        return int(self.__getInitialState().getId())
 
     def move(self, stateP, wordP):
-        state = stateP
+        state = self.__getStateById(str(stateP))
         word = wordP
 
         for char in word:
@@ -290,16 +298,48 @@ class AFD(object):
             if char not in self.__alphabet:
                 return False
 
+            findTransition = False
             for transition in listTransition:
                 if transition.getConsume() == char:
+                    findTransition = True
                     state = transition.getDestination()
                     break
 
-        return state
+            if not findTransition:
+                return int(state.getId())
+
+        return int(state.getId())
 
     def finals(self):
         finalsList = []
         for state in self.__listState:
             if state.getFinal():
-                finalsList.append(state)
+                finalsList.append(int(state.getId()))
         return finalsList
+
+    def deleteTransition(self, source, target, consume):
+        for transition in self.__transistions:
+            if transition.getSource().getId() == str(source) and transition.getDestination().getId() == str(target)\
+                    and transition.getConsume() == consume:
+                self.__transistions.remove(transition)
+
+    def deleteState(self, id):
+
+        index = 0
+        while index < len(self.__transistions):
+            if self.__transistions[index].getDestination().getId()== str(id)\
+                    or self.__transistions[index].getSource().getId() == str(id):
+                self.__transistions.pop(index)
+                index -= 1
+            index += 1
+
+        for state in self.__listState:
+            if state.getId() == str(id):
+                self.__listState.remove(state)
+
+        for state in self.__finalStates:
+            if state.getId() == str(id):
+                self.__finalStates.remove(state)
+
+        if self.__initalState.getId() == str(id):
+            self.__initalState = None
