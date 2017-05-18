@@ -4,6 +4,7 @@ from Transition import * #use transition
 import copy #use to copy a object
 import xml.etree.ElementTree as ET #XML
 from Element_prettify import prettify #formate xml to print
+from Equivalent import *
 
 class AFD(object):
     """
@@ -109,22 +110,58 @@ class AFD(object):
                 return state
         return None
 
+    def complete(self):
+        stateError = State(9)
+        newTransitions = []
+        existError = False
+
+        for state in self.__listState:
+            if len(self.__outputList(state)) < len(self.__alphabet):
+                existError = True
+
+                transitionsEmpty = []
+                for transition in self.__outputList(state):
+                    transitionsEmpty.append(transition.getConsume())
+
+                for char in self.__alphabet:
+                    if char not in transitionsEmpty:
+                        newTransition = Transition(state, stateError, char)
+                        newTransitions.append(newTransition)
+
+        if existError:
+            self.__listState.append(stateError)
+
+            for transition in newTransitions:
+                self.__transistions.append(transition)
+
+            for char in self.__alphabet:
+                transition = Transition(stateError, stateError, char)
+                self.__transistions.append(transition)
+
+
     def __createMultiplication(self, automata):
+        #create a automata copy
+        selfCopy = copy.deepcopy(self)
+        automataCopy = copy.deepcopy(automata)
+
+        selfCopy.complete()
+        automataCopy.complete()
+
         newAutomaton = AFD()
-        for stateA in self.__listState:
-            for stateB in automata.__listState:
+        for stateA in selfCopy.__listState:
+            for stateB in automataCopy.__listState:
                 newAutomaton.addState(stateA.getId()+"."+stateB.getId())
 
         for state in newAutomaton.__listState:
             statesSplit = state.getId().split(".")
 
-            stateA = self.__getStateById(statesSplit[0])
-            stateB = automata.__getStateById(statesSplit[1])
+            stateA = selfCopy.__getStateById(statesSplit[0])
+            stateB = automataCopy.__getStateById(statesSplit[1])
 
-            listA = self.__outputList(stateA)
-            listB = automata.__outputList(stateB)
+            listA = selfCopy.__outputList(stateA)
+            listB = automataCopy.__outputList(stateB)
 
-            for char in self.__alphabet:
+            for char in selfCopy.__alphabet:
                 stateDestination = ""
                 for transitionA in listA:
                     if transitionA.getConsume() == char:
@@ -135,9 +172,6 @@ class AFD(object):
                 for transitionB in listB:
                     if transitionB.getConsume() == char:
                         stateDestination += transitionB.getDestination().getId()
-
-                if newAutomaton.__getStateById(stateDestination) == None:
-                    return None
 
                 newAutomaton.addTransition(state.getId(), stateDestination, char)
 
@@ -195,6 +229,7 @@ class AFD(object):
     def complement(self):
         #faz a copia do objeto, nao referencia
         newAutomaton = copy.deepcopy(self)
+        newAutomaton.complete()
         newAutomaton.__finalStates = []
 
         for state in newAutomaton.__listState:
@@ -248,6 +283,8 @@ class AFD(object):
 
     def salve(self, name):
         structure = ET.Element('structure')
+        comment = ET.Comment("Create with class AFD by Arthur and Saulo")
+        structure.append(comment)
         type = ET.SubElement(structure, 'type')
         type.text = 'fa'
         automaton = ET.SubElement(structure, 'automaton')
@@ -343,3 +380,60 @@ class AFD(object):
 
         if self.__initalState.getId() == str(id):
             self.__initalState = None
+
+    def equivalents(self):
+        self.complete()
+        equivalent = []
+
+        #generate a matrix
+        initial = 1
+        for i in xrange(len(self.__listState)-1):
+            state1 = self.__listState[i]
+            for j in xrange(initial, len(self.__listState)):
+                state2 = self.__listState[j]
+                equivalent1 = Equivalent(state1, state2)
+                equivalent.append(equivalent1)
+            initial += 1
+
+        #set a non-final not equivalent a final states
+        for eq in equivalent:
+            states = eq.getStates()
+            if states[0].getFinal() != states[1].getFinal():
+                eq.setEquivalent(False)
+
+        for eq in equivalent:
+            states = eq.getStates()
+
+            for char in self.__alphabet:
+                state0Move = self.__getStateById(str(self.move(states[0].getId(), char)))
+                state1Move = self.__getStateById(str(self.move(states[1].getId(), char)))
+
+                # search a equivalent matrix slot
+                if state0Move.getId() != state1Move.getId():
+                    for eqSlot in equivalent:
+                        if (eqSlot.getStates()[0].getId() == state0Move.getId() and eqSlot.getStates()[1].getId() == state1Move.getId()) or\
+                           (eqSlot.getStates()[0].getId() == state1Move.getId() and eqSlot.getStates()[1].getId() == state0Move.getId()):
+                            break
+                    
+                    #com eqSlot encontrado verifica se estes states sao equivalentes
+                    if eqSlot.getEquivalent() == False:
+                        eq.setEquivalent(False)
+                        break
+                    else:
+                        eqSlot.getDependents().append(eq)
+
+        #marcar nao equivalentes na lista de dependencia de todos que nao sao equivalentes
+        for eq in equivalent:
+            if eq.getEquivalent() == False:
+                for eq1 in eq.getDependents():
+                    eq1.setEquivalent(False)
+
+        #create a return list
+        returnList = []
+        for eq in equivalent:
+            if eq.getEquivalent() == True:
+                states = eq.getStates()
+                returnTuple = (int(states[0].getId()), int(states[1].getId()))
+                returnList.append(returnTuple)
+
+        return returnList
