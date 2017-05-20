@@ -30,13 +30,21 @@ automata1.load("minimizacaoProva.jff")
 #ai = automata1.equivalents()
 #automata1.salve("aaaaaa.jff")
 
-automata2 = AFD()
-automata2.addState(1, initial=True)
-automata2.addState(2, final=True)
-automata2.addState(3, final=True)
-automata2.addState(4, final=True)
-automata2.addTransition(1, 2, 'a')
-automata2.addTransition(1, 3, 'b')
-automata2.addTransition(1, 4, 'c')
-print automata2.equivalents()
-automata2.salve("aiaia.jff")
+#automata2 = AFD()
+#automata2.addState(1, initial=True)
+#automata2.addState(2, final=True)
+#automata2.addState(3, final=True)
+#automata2.addState(4, final=True)
+#automata2.addTransition(1, 2, 'a')
+#automata2.addTransition(1, 3, 'b')
+#automata2.addTransition(1, 4, 'c')
+
+#automata3 = automata1.minimum()
+#automata3.salve("ababab.jff")
+automata3 = AFD()
+automata3.load("automata2.jff")
+
+if AFD.equivalents(automata1, automata3):
+    print "Equivalentes"
+else:
+    print "Nao equivalentes"

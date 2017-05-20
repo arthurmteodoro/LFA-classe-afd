@@ -12,10 +12,13 @@ class AFD(object):
     """
 
     def __init__(self):
+        """
+        Create a empty automaton
+        """
         self.__listState = []
         self.__alphabet = []
-        self.__transistions = []
-        self.__initalState = None
+        self.__transitions = []
+        self.__initialState = None
         self.__finalStates = []
 
     def __getInitialState(self):
@@ -23,7 +26,7 @@ class AFD(object):
         get a initial state
         :return: initial state
         """
-        return self.__initalState
+        return self.__initialState
 
     def addState(self, id, initial=False, final=False):
         """
@@ -33,7 +36,7 @@ class AFD(object):
         :param final: if a state is final (bool)
         :return: if a state is create or not (bool)
         """
-        if initial and self.__initalState != None:
+        if initial and self.__initialState != None:
             return False
 
         state = State(id)
@@ -44,8 +47,8 @@ class AFD(object):
         if(final):
             self.__finalStates.append(state)
 
-        if(initial and self.__initalState == None):
-            self.__initalState = state
+        if(initial and self.__initialState == None):
+            self.__initialState = state
 
         return True
 
@@ -73,17 +76,27 @@ class AFD(object):
         if(consume not in self.__alphabet):
             self.__alphabet.append(consume)
 
-        self.__transistions.append(transition)
+        self.__transitions.append(transition)
 
     def __outputList(self, state):
+        """
+        Returns a list of all transitions that exit this state
+        :param state: State 
+        :return: List of transitions
+        """
         listTransistion = []
-        for transition in self.__transistions:
+        for transition in self.__transitions:
             if transition.getSource() == state:
                 listTransistion.append(transition)
         return listTransistion
 
     def accept(self, input):
-        state = self.__initalState
+        """
+        Checks of this word is accepted
+        :param input: word  
+        :return: 
+        """
+        state = self.__initialState
 
         for char in input:
 
@@ -110,8 +123,14 @@ class AFD(object):
                 return state
         return None
 
+    def __getMaxId(self):
+        listId = []
+        for state in self.__listState:
+            listId.append(int(state.getId()))
+        return max(listId)
+
     def complete(self):
-        stateError = State(9)
+        stateError = State(self.__getMaxId()+900)
         newTransitions = []
         existError = False
 
@@ -132,11 +151,11 @@ class AFD(object):
             self.__listState.append(stateError)
 
             for transition in newTransitions:
-                self.__transistions.append(transition)
+                self.__transitions.append(transition)
 
             for char in self.__alphabet:
                 transition = Transition(stateError, stateError, char)
-                self.__transistions.append(transition)
+                self.__transitions.append(transition)
 
 
     def __createMultiplication(self, automata):
@@ -192,7 +211,7 @@ class AFD(object):
 
         initialState = newAutomaton.__getStateById(stateA.getId()+"."+stateB.getId())
         initialState.setInitial(True)
-        newAutomaton.__initalState = initialState
+        newAutomaton.__initialState = initialState
 
         for stateA in self.__listState:
             for stateB in automata.__listState:
@@ -214,7 +233,7 @@ class AFD(object):
 
         initialState = newAutomaton.__getStateById(stateA.getId()+"."+stateB.getId())
         initialState.setInitial(True)
-        newAutomaton.__initalState = initialState
+        newAutomaton.__initialState = initialState
 
         for stateA in self.__listState:
             for stateB in automata.__listState:
@@ -247,8 +266,8 @@ class AFD(object):
             # limpa o automato
             self.__listState = []
             self.__alphabet = []
-            self.__transistions = []
-            self.__initalState = None
+            self.__transitions = []
+            self.__initialState = None
             self.__finalStates = []
 
             tree = ET.parse(name)
@@ -306,7 +325,7 @@ class AFD(object):
         comment = ET.Comment("The list of transitions.")
         automaton.append(comment)
 
-        for transitions in self.__transistions:
+        for transitions in self.__transitions:
             transition = ET.SubElement(automaton, 'transition')
 
             from1 = ET.SubElement(transition, 'from')
@@ -355,18 +374,18 @@ class AFD(object):
         return finalsList
 
     def deleteTransition(self, source, target, consume):
-        for transition in self.__transistions:
+        for transition in self.__transitions:
             if transition.getSource().getId() == str(source) and transition.getDestination().getId() == str(target)\
                     and transition.getConsume() == consume:
-                self.__transistions.remove(transition)
+                self.__transitions.remove(transition)
 
     def deleteState(self, id):
 
         index = 0
-        while index < len(self.__transistions):
-            if self.__transistions[index].getDestination().getId()== str(id)\
-                    or self.__transistions[index].getSource().getId() == str(id):
-                self.__transistions.pop(index)
+        while index < len(self.__transitions):
+            if self.__transitions[index].getDestination().getId()== str(id)\
+                    or self.__transitions[index].getSource().getId() == str(id):
+                self.__transitions.pop(index)
                 index -= 1
             index += 1
 
@@ -378,19 +397,20 @@ class AFD(object):
             if state.getId() == str(id):
                 self.__finalStates.remove(state)
 
-        if self.__initalState.getId() == str(id):
-            self.__initalState = None
+        if self.__initialState.getId() == str(id):
+            self.__initialState = None
 
-    def equivalents(self):
-        self.complete()
+    def equivalentsStates(self):
+        automaton = copy.deepcopy(self)
+        automaton.complete()
         equivalent = []
 
         #generate a matrix
         initial = 1
-        for i in xrange(len(self.__listState)-1):
-            state1 = self.__listState[i]
-            for j in xrange(initial, len(self.__listState)):
-                state2 = self.__listState[j]
+        for i in xrange(len(automaton.__listState)-1):
+            state1 = automaton.__listState[i]
+            for j in xrange(initial, len(automaton.__listState)):
+                state2 = automaton.__listState[j]
                 equivalent1 = Equivalent(state1, state2)
                 equivalent.append(equivalent1)
             initial += 1
@@ -404,9 +424,9 @@ class AFD(object):
         for eq in equivalent:
             states = eq.getStates()
 
-            for char in self.__alphabet:
-                state0Move = self.__getStateById(str(self.move(states[0].getId(), char)))
-                state1Move = self.__getStateById(str(self.move(states[1].getId(), char)))
+            for char in automaton.__alphabet:
+                state0Move = automaton.__getStateById(str(automaton.move(states[0].getId(), char)))
+                state1Move = automaton.__getStateById(str(automaton.move(states[1].getId(), char)))
 
                 # search a equivalent matrix slot
                 if state0Move.getId() != state1Move.getId():
@@ -437,3 +457,46 @@ class AFD(object):
                 returnList.append(returnTuple)
 
         return returnList
+
+    def minimum(self):
+        automaton = copy.deepcopy(self)
+        statesEquivalents = automaton.equivalentsStates()
+
+        for eq in statesEquivalents:
+            state0 = automaton.__getStateById(str(eq[0]))
+            state1 = automaton.__getStateById(str(eq[1]))
+
+            if state0 != None or state1 != None:
+                for transition in automaton.__transitions:
+                    if transition.getDestination() == state1:
+                        transition.setDestination(state0)
+                automaton.deleteState(int(state1.getId()))
+
+        return automaton
+    
+    @staticmethod
+    def equivalents(automaton1, automaton2):
+
+        automaton1Copy = copy.deepcopy(automaton1)
+        automaton2Copy = copy.deepcopy(automaton2)
+
+        automaton1Copy.complete()
+        automaton2Copy.complete()
+
+        #change id for state id + 500 + max id of this automaton
+        maxId = automaton2Copy.__getMaxId()
+        for states in automaton2Copy.__listState:
+            states.setId(str(int(states.getId())+maxId+500))
+
+        automaton1Copy.__listState.extend(automaton2Copy.__listState)
+        automaton1Copy.__finalStates.extend(automaton2Copy.__finalStates)
+        automaton1Copy.__transitions.extend(automaton2Copy.__transitions)
+
+        eq = automaton1Copy.equivalentsStates()
+
+        initialStates = (int(automaton1Copy.__initialState.getId()), int(automaton2Copy.__initialState.getId()))
+
+        if initialStates in eq:
+            return True
+        else:
+            return False
