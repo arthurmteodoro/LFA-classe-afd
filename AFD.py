@@ -565,6 +565,14 @@ class AFD(object):
         if self.__initialState.getId() == str(id):
             self.__initialState = None
 
+    @staticmethod
+    def __markStates(equivalent):
+        equivalent.setEquivalent(False)
+        if(len(equivalent.getDependents()) > 0):
+            for eq in equivalent.getDependents():
+                if eq != equivalent:
+                    AFD.__markStates(eq)
+
     def equivalentsStates(self):
         """
         Get a equivalents states in this automaton
@@ -591,31 +599,31 @@ class AFD(object):
                 eq.setEquivalent(False)
 
         for eq in equivalent:
-            states = eq.getStates()
+            if eq.getEquivalent() != False:
+                states = eq.getStates()
 
-            for char in automaton.__alphabet:
-                state0Move = automaton.__getStateById(str(automaton.move(states[0].getId(), char)))
-                state1Move = automaton.__getStateById(str(automaton.move(states[1].getId(), char)))
+                for char in automaton.__alphabet:
+                    state0Move = automaton.__getStateById(str(automaton.move(states[0].getId(), char)))
+                    state1Move = automaton.__getStateById(str(automaton.move(states[1].getId(), char)))
 
-                # search a equivalent matrix slot
-                if state0Move.getId() != state1Move.getId():
-                    for eqSlot in equivalent:
-                        if (eqSlot.getStates()[0].getId() == state0Move.getId() and eqSlot.getStates()[1].getId() == state1Move.getId()) or\
-                           (eqSlot.getStates()[0].getId() == state1Move.getId() and eqSlot.getStates()[1].getId() == state0Move.getId()):
+                    # search a equivalent matrix slot
+                    if state0Move.getId() != state1Move.getId():
+                        for eqSlot in equivalent:
+                            if (eqSlot.getStates()[0].getId() == state0Move.getId() and eqSlot.getStates()[1].getId() == state1Move.getId()) or\
+                               (eqSlot.getStates()[0].getId() == state1Move.getId() and eqSlot.getStates()[1].getId() == state0Move.getId()):
+                                break
+
+                        #com eqSlot encontrado verifica se estes states sao equivalentes
+                        if eqSlot.getEquivalent() == False:
+                            eq.setEquivalent(False)
                             break
-                    
-                    #com eqSlot encontrado verifica se estes states sao equivalentes
-                    if eqSlot.getEquivalent() == False:
-                        eq.setEquivalent(False)
-                        break
-                    else:
-                        eqSlot.getDependents().append(eq)
+                        else:
+                            eqSlot.getDependents().append(eq)
 
         #marcar nao equivalentes na lista de dependencia de todos que nao sao equivalentes
         for eq in equivalent:
             if eq.getEquivalent() == False:
-                for eq1 in eq.getDependents():
-                    eq1.setEquivalent(False)
+                AFD.__markStates(eq)
 
         #create a return list
         returnList = []
@@ -668,6 +676,7 @@ class AFD(object):
         """
         automaton = copy.deepcopy(self)
         automaton.__deleteNotReachedStates()
+        automaton.complete()
 
         statesEquivalents = automaton.equivalentsStates()
 
