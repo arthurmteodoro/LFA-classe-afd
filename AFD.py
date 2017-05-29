@@ -1,3 +1,7 @@
+#            Primeiro Trabalho de LFA
+# Arthur Alexsander Martins Teodoro - 0022427
+# Saulo Ricardo Dias Fernandes - 0021581
+# Data: 05/05/2017
 from __future__ import print_function #use python3 print function
 import copy #use to copy a object
 import xml.etree.ElementTree as ET #XML
@@ -385,7 +389,7 @@ class AFD(object):
         :return: self difference automata (AFD)
         """
         automataB = automata.complement();
-        return self.union(automataB)
+        return self.intersection(automataB)
 
     def load(self, name):
         """
